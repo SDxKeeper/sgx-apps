@@ -1,4 +1,4 @@
-FROM nexus.iex.ec/scone-python
+FROM sconecuratedimages/iexec:python-3.6.6-alpine3.6-latest
 
 RUN echo "http://dl-cdn.alpinelinux.org/alpine/v3.5/community" >> /etc/apk/repositories \
  && apk update \
@@ -12,6 +12,6 @@ RUN SCONE_MODE=sim pip install cython scipy==1.2.0 scikit-learn nilearn matplotl
 
 RUN cp /usr/bin/python3.6 /usr/bin/python3
 
-COPY nilearn.py	/app/nilearn.py
+COPY nilearn-test.py	/app/nilearn-test.py
 
-ENTRYPOINT mkdir -p /iexec_in/data && unzip /iexec_in/$DATASET_FILENAME -d /iexec_in/data && python3 /app/nilearn.py sgx
+ENTRYPOINT mkdir -p /data && unzip /iexec_in/$DATASET_FILENAME -d /data && python /app/nilearn-test.py sgx

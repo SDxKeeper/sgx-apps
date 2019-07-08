@@ -15,7 +15,7 @@ from web3.auto import w3
 from eth_account.messages import defunct_hash_message
 
 keccak256 = w3.soliditySha3
-debug = True
+debug = False
 
 class DigestSigner:
     def __init__(self, enclaveKey, worker, taskid, digest):
@@ -117,14 +117,16 @@ def DecryptOutput(encryptedOutput, key, iv):
 
 def ZipOutput():
     zipf = zipfile.ZipFile(zippedOutputPath, 'a', zipfile.ZIP_DEFLATED)
-    os.chdir("/scone")
-    # ziph is zipfile handle
+
+    os.chdir(zipTargetDirectory)
+
     for root, dirs, files in os.walk('./'):
         for file in files:
-            if file == os.environ['taskid'] + '_result.zip':
+            if file == zipFileName:
                 continue
             print("Writing file " + file + " to zip archive.")
             zipf.write(os.path.join(root, file))
+
     zipf.close()
 
 def PadZippedOutput():
@@ -156,6 +158,7 @@ def EncryptZippedOutput():
 
         aes = AES.new(key, AES.MODE_CBC, iv)
         buffer_size = 8192
+
         #chunks = iter(lambda: input.read(buffer_size), '')
         result = input.read()
         #for chunk in chunks:
@@ -176,17 +179,18 @@ def WriteEnclaveSign():
             if not buf : break
             SHAhash.update(buf)
         input.close()
-        digest = '0x' + SHAhash.hexdigest()
+
+        digest     = '0x' + SHAhash.hexdigest()
         enclaveKey = os.environ['enclave_key']
-        taskid = os.environ['taskid']
-        worker = os.environ['worker']
-        result = DigestSigner(
+        taskid     = os.environ['taskid']
+        worker     = os.environ['worker']
+        result     = DigestSigner(
             enclaveKey = enclaveKey,
             worker     = worker,
             taskid     = taskid,
             digest     = digest,
         ).jsonify()
-        print(result)
+
         with open('/iexec_out/enclaveSig.iexec', 'w+') as outfile:
             outfile.write(result)
 
@@ -195,16 +199,23 @@ def WriteEnclaveSign():
         print(ex)
 
 if __name__ == '__main__':
-    #os.remove('iexec_out/result.zip')
-    if sys.argv[1] == "decrypt":
+    if sys.argv[1] == 'test':
+        zipTargetDirectory  = os.getcwd() + '/' + sys.argv[2]
+        zipFileName         = 'result.zip'
+        zippedOutputPath    = zipTargetDirectory + '/' + zipFileName
+
+        ZipOutput()
         WriteEnclaveSign()
+        PadZippedOutput()
+        EncryptZippedOutput()
+
         k=TestReadEncryptedKey()
         TestEncryptedOutput(k)
-    elif sys.argv[1] == "test":
-        zippedOutputPath=sys.argv[2]
-        EncryptZippedOutput()
+
     else:
-        zippedOutputPath = '/scone/' + os.environ['taskid'] + '_result.zip'
+        zipTargetDirectory  = '/scone'
+        zipFileName         = os.environ['taskid'] + '_result.zip'
+        zippedOutputPath    = zipTargetDirectory + '/' + zipFileName
         ZipOutput()
         WriteEnclaveSign()
         PadZippedOutput()

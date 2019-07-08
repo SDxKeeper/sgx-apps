@@ -40,20 +40,21 @@ docker build -f "$APP_FOLDER/$DOCKERFILE" -t $APP_NAME $APP_FOLDER
 # get mrenclave of python interpreter
 MRENCLAVE=$(docker run \
                 -e SCONE_MODE=sim \
-                -e SCONE_HEAP=1G \
+                -e SCONE_HEAP=2G \
                 -e SCONE_HASH=1 \
                 -e SCONE_ALPINE=1 \
-                nexus.iex.ec/python_scone python)
+                --entrypoint="python" \
+                $APP_NAME)
 
 docker run --rm --entrypoint="" -v $PWD/python:/python $APP_NAME sh -c "cp -r /usr/lib/python3.6 /python"
 
 # create fspf.pb
 docker run -e SCONE_MODE=sim \
-    -v $PWD/app:/app \
+    -v $PWD/nilearn:/app \
     -v $PWD/signer:/signer \
     -v $PWD/python/python3.6:/usr/lib/python3.6 \
     -v $PWD/conf:/conf \
-    nexus.iex.ec/scone-cli sh -c \
+    iexechub/scone-cli sh -c \
 "scone fspf create conf/fspf.pb; \
 scone fspf addr conf/fspf.pb /  --not-protected --kernel /; \
 scone fspf addr conf/fspf.pb /usr/lib/python3.6 --authenticated --kernel /usr/lib/python3.6; \
@@ -66,7 +67,6 @@ scone fspf addr conf/fspf.pb /app --authenticated --kernel /app; \
 scone fspf addf conf/fspf.pb /app /app;\
 scone fspf encrypt ./conf/fspf.pb > /conf/keytag;"
 
-rm -rf python
 
 # get fingerprint
 FSPF_TAG=$(cat conf/keytag | awk '{print $9}')
@@ -81,7 +81,7 @@ esac
 
 docker build -f second-build.dockerfile -t $APP_NAME .
 
-echo "Fingerprint: $FINGERPRINT" | tee fingerprint.txt
+echo $FINGERPRINT | tee fingerprint.txt
 
 # clean
 rm second-build.dockerfile
